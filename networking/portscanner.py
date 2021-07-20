@@ -1,6 +1,10 @@
 import socket
+import threading
+from queue import Queue
 
-target = "192.168.1.1"    #my router
+target = input("Enter IP to Scan: ")    #my router
+queue = Queue()         #fifo
+open_ports = []
 
 def portscan(port):
     try:
@@ -10,10 +14,30 @@ def portscan(port):
     except:
         return False
 
-for port in range (1, 1024):
-    result = portscan(port)
-    if result:
-        print("Port {} is open!".format(port))
-    else:
-        print("Port {} is closed".format(port))
+def fill_queue(port_list):
+    for port in port_list:
+        queue.put(port)
 
+def worker():
+    while not queue.empty():
+        port = queue.get()
+        if portscan(port):
+            print("Port {} is open!".format(port))
+            open_ports.append(port)
+
+port_list = range(1, 1024)
+fill_queue(port_list)
+
+thread_list = []
+
+for t in range(10):         #utilise 10 threads
+    thread = threading.Thread(target=worker)
+    thread_list.append(thread)
+
+for thread in thread_list:
+    thread.start()
+
+for thread in thread_list:
+    thread.join()           #wait for thread to finish before continuing with code
+
+print("Open ports are: ", open_ports)
